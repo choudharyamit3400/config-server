@@ -43,7 +43,51 @@ There is ongoing work to add  a lot of other capabilities and modules needed to 
 
 This repository is used by Config server to load all the configs related to our microservices . 
 
+Concept: 
+Lets say you have 30 microservcies and each need to be configured with  application.properties/yml and each has 100s of instances running .
+Being sad that just imagin if you have to update the  logging server endpint then just to change the one property you would have to update the code for each individual service and had to redeoploy all the instances  and restart all of them .
+
+There comes the Spring Cloud Config & Spring Cloud Bus   to rescue us .
+
+How it works ?
+- Each Microservice need to subscibe to our config server
+- Each microservice should expose actuator endpoints refresh,busrefresh  or monitor
+- Each microservice need to define auto refresh properties with scope as @RefreshScope
+- Each microservice would subscibe to a messageBroker  implemented in Spring Cloud Bus , here we are using RabbitMq
+- config server would configure it self to load configs  from your git hub  repository.
+- Config server would need to define the branch that should be used to load the configs
+- your git repo configured in config server need to have {applicationname}.properties file in it with exact  name match , case doesnt matter at all
+
+- we would use  /actuator/busrefresh endpoint on any one service and rest all the other services subscribing to your Messagebroke would be notified 
+
+Configure maven depencies accordingly in your micro services and config server 
+
+Sample config  for config server would look like this 
+
 Please refer below architecture 
+
+spring.application.name=CONFIG-SERVER
+server.port=8888
+eureka.instance.client.serverUrl.defaultZone=http://localhost:8761/eureka/
+spring.cloud.config.server.git.uri=https://github.com/choudharyamit3400/config-server
+spring.cloud.config.server.git.clone-on-start=true
+spring.cloud.config.server.git.default-label=main
+
+Sample configuration of your service would look like 
+
+# using rabbit mq
+spring.rabbitmq.host=localhost
+spring.rabbitmq.port=5672
+spring.rabbitmq.username=guest
+spring.rabbitmq.password=guest
+spring.application.name=DEPARTMENT-SERVICE
+
+# we are going to load all the common config from our config server
+spring.config.import=optional:configserver:http://localhost:8888
+
+
+
+Once everything else configured then we can just commit the change in github repo with updated properties and call the bus refresh endpint on any one service and you would be able to see all the beans with @RefreshScope would be upated . 
 
 ![image](https://github.com/user-attachments/assets/e65d98d0-3d73-4df4-bed2-bcd3c0ca6a5e)
 
